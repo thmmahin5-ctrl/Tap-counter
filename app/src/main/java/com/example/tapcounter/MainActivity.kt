@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.glance.appwidget.updateAll
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -33,7 +32,7 @@ fun App() {
     fun change(d: Int) {
         Store.add(ctx, d)
         tick++
-        scope.launch { CounterWidget().updateAll(ctx) }
+        scope.launch { refreshAll(ctx) }
     }
 
     val all = remember(tick) { Store.all(ctx) }
