@@ -5,19 +5,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.provideContent
-import androidx.glance.appwidget.updateAll
+import androidx.glance.appwidget.state.updateAppWidgetState
+import androidx.glance.appwidget.update
 import androidx.glance.background
 import androidx.glance.Button
 import androidx.glance.action.ActionParameters
+import androidx.glance.currentState
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
@@ -31,6 +36,16 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import java.time.LocalDate
 
+private val REFRESH_KEY = longPreferencesKey("refresh")
+
+suspend fun refreshAll(context: Context) {
+    val ids = GlanceAppWidgetManager(context).getGlanceIds(CounterWidget::class.java)
+    ids.forEach { id ->
+        updateAppWidgetState(context, id) { it[REFRESH_KEY] = System.currentTimeMillis() }
+        CounterWidget().update(context, id)
+    }
+}
+
 class CounterWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent { Content(context) }
@@ -39,6 +54,8 @@ class CounterWidget : GlanceAppWidget() {
 
 @Composable
 private fun Content(c: Context) {
+    val prefs = currentState<Preferences>()
+    val tick = prefs[REFRESH_KEY] ?: 0L
     val today = Store.day(c, LocalDate.now())
     val count = today.sumOf { it.delta }
     val ups = today.filter { it.delta > 0 }
@@ -66,14 +83,14 @@ private fun Content(c: Context) {
 class PlusAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         Store.add(context, 1)
-        CounterWidget().updateAll(context)
+        refreshAll(context)
     }
 }
 
 class MinusAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         Store.add(context, -1)
-        CounterWidget().updateAll(context)
+        refreshAll(context)
     }
 }
 
